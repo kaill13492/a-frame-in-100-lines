@@ -1,65 +1,39 @@
-import { FrameRequest, getFrameMessage, getFrameHtmlResponse } from '@coinbase/onchainkit/frame';
 import { NextRequest, NextResponse } from 'next/server';
-import { NEXT_PUBLIC_URL } from '../../config';
+import { getFrameMessage, getFrameHtmlResponse } from '@coinbase/onchainkit/frame';
 
-async function getResponse(req: NextRequest): Promise<NextResponse> {
-  const body: FrameRequest = await req.json();
-  const { isValid, message } = await getFrameMessage(body, { neynarApiKey: 'NEYNAR_ONCHAIN_KIT' });
+export async function POST(req: NextRequest) {
+  const body = await req.json();
+  const { message } = await getFrameMessage(body);
 
-  if (!isValid) {
-    return new NextResponse('Message not valid', { status: 500 });
-  }
-
-  const text = message.input || '';
-  let state = {
-    page: 0,
-  };
-  try {
-    state = JSON.parse(decodeURIComponent(message.state?.serialized));
-  } catch (e) {
-    console.error(e);
-  }
-
-  /**
-   * Use this code to redirect to a different page
-   */
-  if (message?.button === 3) {
-    return NextResponse.redirect(
-      'https://www.google.com/search?q=cute+dog+pictures&tbm=isch&source=lnms',
-      { status: 302 },
+  // 👉 STAN 1: kliknięcie pierwszego przycisku
+  if (message?.button === 1) {
+    return new NextResponse(
+      getFrameHtmlResponse({
+        image: {
+          src: `${process.env.NEXT_PUBLIC_URL}/success.png`,
+          aspectRatio: '1:1',
+        },
+        buttons: [
+          {
+            label: '🔁 Wróć',
+          },
+        ],
+      }),
     );
   }
 
+  // 👉 STAN DOMYŚLNY
   return new NextResponse(
     getFrameHtmlResponse({
+      image: {
+        src: `${process.env.NEXT_PUBLIC_URL}/cover.png`,
+        aspectRatio: '1:1',
+      },
       buttons: [
         {
-          label: `State: ${state?.page || 0}`,
-        },
-        {
-          action: 'link',
-          label: 'OnchainKit',
-          target: 'https://onchainkit.xyz',
-        },
-        {
-          action: 'post_redirect',
-          label: 'Dog pictures',
+          label: '👉 Kliknij mnie',
         },
       ],
-      image: {
-        src: `${NEXT_PUBLIC_URL}/park-1.png`,
-      },
-      postUrl: `${NEXT_PUBLIC_URL}/api/frame`,
-      state: {
-        page: state?.page + 1,
-        time: new Date().toISOString(),
-      },
     }),
   );
 }
-
-export async function POST(req: NextRequest): Promise<Response> {
-  return getResponse(req);
-}
-
-export const dynamic = 'force-dynamic';
